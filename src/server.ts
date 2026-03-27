@@ -15,6 +15,17 @@ import type {
   TelegramUpdate,
 } from "./types.js";
 
+type InboxPullRecord = {
+  id: string;
+  project_key: string;
+  thread_id: string;
+  role: "user";
+  text: string;
+  status: "pending" | "consumed";
+  chat_id: number;
+  telegram_message_id: number;
+};
+
 const app = express();
 app.use(express.json({ limit: "1mb" }));
 
@@ -433,8 +444,20 @@ app.post("/bridge/pull", requireHubToken, async (req: Request, res: Response) =>
       .get();
 
     const pending = snapshot.docs
-      .map((doc) => ({ id: doc.id, ...doc.data() }))
-      .filter((record) => record.status === "pending")
+      .map((doc) => {
+        const data = doc.data() as Partial<Omit<InboxPullRecord, "id">>;
+        return {
+          id: doc.id,
+          project_key: typeof data.project_key === "string" ? data.project_key : "",
+          thread_id: typeof data.thread_id === "string" ? data.thread_id : "",
+          role: "user",
+          text: typeof data.text === "string" ? data.text : "",
+          status: data.status === "consumed" ? "consumed" : "pending",
+          chat_id: Number(data.chat_id || 0),
+          telegram_message_id: Number(data.telegram_message_id || 0),
+        } as InboxPullRecord;
+      })
+      .filter((record) => record.status === "pending" && record.text.trim().length > 0)
       .slice(0, limit);
 
     if (consume && pending.length > 0) {
