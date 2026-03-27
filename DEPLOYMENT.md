@@ -49,3 +49,18 @@ Surveillance continue:
 ```bash
 npm run bridge -- watch pilotage-ed default
 ```
+
+## 5) Relais Codex CLI
+
+Demarrer le relais local qui execute `codex exec` pour chaque message Telegram:
+
+```bash
+npm run relay:codex
+```
+
+Le relais envoie:
+
+- un message de connexion (`Connecte. Relais Codex CLI local actif.`)
+- un statut de progression (`Reflexion en cours...`)
+- la reponse finale Codex
+- la liste des fichiers modifies quand il y en a

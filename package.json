@@ -13,7 +13,8 @@
     "start": "node dist/local-server.js",
     "set-webhook": "tsx src/set-webhook.ts",
     "send:connected": "tsx src/send-connected.ts",
-    "bridge": "tsx src/bridge-client.ts"
+    "bridge": "tsx src/bridge-client.ts",
+    "relay:codex": "tsx src/codex-telegram-relay.ts"
   },
   "dependencies": {
     "express": "^4.21.2"

@@ -34,6 +34,7 @@ npm run dev:local
 npm run set-webhook
 npm run send:connected
 npm run bridge -- pull pilotage-ed default
+npm run relay:codex
 ```
 
 ## Mode local (sans Firebase)
@@ -59,6 +60,29 @@ Test rapide:
 3. Depuis Telegram, envoyer un message normal
 4. Verifier la remontee via `npm run bridge -- pull pilotage-ed default`
 5. Repondre via `npm run bridge -- push pilotage-ed default assistant "Reponse de test"`
+
+## Relais Codex CLI (Telegram -> Codex -> Telegram)
+
+Le script `relay:codex` permet un agent local autonome:
+
+- il lit les messages Telegram via `/bridge/pull`
+- il envoie un statut `Reflexion en cours...`
+- il execute `codex exec` dans le workspace du projet
+- il renvoie la reponse sur Telegram
+- il publie aussi un resume des fichiers modifies (`git status --short`)
+
+Variables utiles:
+
+- `CODEX_DEFAULT_WORKSPACE`
+- `CODEX_PROJECT_WORKSPACES` (format `projet=chemin;projet2=chemin2`)
+- `TELEGRAM_PROJECT_KEY`
+- `TELEGRAM_THREAD_ID`
+
+Lancer le relais:
+
+```bash
+npm run relay:codex
+```
 
 ## Flux principal
 
