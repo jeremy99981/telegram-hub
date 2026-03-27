@@ -264,6 +264,13 @@ const pushInboxMessage = async (message: TelegramMessage) => {
     created_at: nowIso(),
   };
   saveStore();
+
+  if (config.autoAck) {
+    await sendTelegramMessage(
+      chatId,
+      `Message recu et transmis.\nProjet: ${activeProject}\nThread: ${threadId}`
+    );
+  }
 };
 
 const handleTelegramCommand = async (message: TelegramMessage): Promise<boolean> => {

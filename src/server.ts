@@ -216,6 +216,13 @@ const pushInboxMessage = async (message: TelegramMessage) => {
     },
     { merge: true }
   );
+
+  if (config.autoAck) {
+    await sendTelegramMessage(
+      chatId,
+      `Message recu et transmis.\nProjet: ${activeProject}\nThread: ${normalizedThread}`
+    );
+  }
 };
 
 const handleTelegramCommand = async (message: TelegramMessage): Promise<boolean> => {

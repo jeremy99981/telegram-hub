@@ -36,6 +36,7 @@ npm run dev
 npm run dev:local
 npm run set-webhook
 npm run send:connected
+npm run bridge -- pull pilotage-ed default
 ```
 
 ## Mode local (sans Firebase)
@@ -45,6 +46,7 @@ Le mode `dev:local` demarre un hub autonome avec stockage JSON local:
 - fichier store par defaut: `.data/telegram-hub-store.json`
 - polling Telegram automatique via `getUpdates`
 - meme API bridge: `/projects/bind`, `/bridge/push`, `/bridge/pull`
+- auto-ack Telegram configurable (`TELEGRAM_AUTO_ACK=true` par defaut)
 
 Variables minimales:
 
@@ -57,6 +59,9 @@ Test rapide:
 
 1. Ouvrir le bot Telegram et envoyer `/bind pilotage-ed`
 2. Lancer `npm run send:connected` pour envoyer un ping `Connecte` sur le chat owner
+3. Depuis Telegram, envoyer un message normal
+4. Verifier la remontee via `npm run bridge -- pull pilotage-ed default`
+5. Repondre via `npm run bridge -- push pilotage-ed default assistant "Reponse de test"`
 
 ## Flux principal
 

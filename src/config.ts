@@ -13,6 +13,7 @@ export const config = {
   webhookHeaderToken: process.env.TELEGRAM_WEBHOOK_HEADER_TOKEN?.trim() || "",
   ownerChatId: process.env.TELEGRAM_OWNER_CHAT_ID?.trim() || "",
   publicUrl: process.env.HUB_PUBLIC_URL?.trim() || "",
+  autoAck: /^(1|true|yes|on)$/i.test(process.env.TELEGRAM_AUTO_ACK?.trim() || "true"),
   port: Number(process.env.PORT || 8080),
 };
 
