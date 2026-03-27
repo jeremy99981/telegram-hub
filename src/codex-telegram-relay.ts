@@ -32,6 +32,20 @@ type RelayState = {
   updated_at: string;
 };
 
+type HubStoreSnapshot = {
+  settings?: {
+    default_model?: string;
+  };
+  projects?: Record<string, { primary_chat_id?: number }>;
+  chatContexts?: Record<
+    string,
+    {
+      active_project_key?: string;
+      active_model?: string;
+    }
+  >;
+};
+
 type CodexEvent = {
   type?: string;
   item?: {
@@ -54,6 +68,8 @@ const statePath = resolve(
 const maxTelegramChars = 3500;
 const isWindows = process.platform === "win32";
 const codexPs1Path = resolve(process.env.APPDATA || "", "npm", "codex.ps1");
+const hubStorePath = resolve(process.env.HUB_LOCAL_STORE_PATH || ".data/telegram-hub-store.json");
+const defaultModel = (process.env.CODEX_DEFAULT_MODEL || "").trim();
 
 const requiredEnv = (name: string, value: string) => {
   if (!value) {
@@ -85,6 +101,27 @@ const workspaceMap = parseWorkspaceMap(projectWorkspaceMapRaw);
 
 const resolveWorkspace = (project: string): string => {
   return workspaceMap[project.toLowerCase()] || defaultWorkspace;
+};
+
+const resolveModel = (project: string): string | undefined => {
+  try {
+    const content = readFileSync(hubStorePath, "utf8");
+    const snapshot = JSON.parse(content) as HubStoreSnapshot;
+    const projectRecord = snapshot.projects?.[project];
+    const chatId = Number(projectRecord?.primary_chat_id);
+    if (Number.isFinite(chatId)) {
+      const context = snapshot.chatContexts?.[String(chatId)];
+      if (context?.active_project_key === project && context.active_model?.trim()) {
+        return context.active_model.trim();
+      }
+    }
+    if (snapshot.settings?.default_model?.trim()) {
+      return snapshot.settings.default_model.trim();
+    }
+  } catch {
+    // ignore file read errors and fallback to env default
+  }
+  return defaultModel || undefined;
 };
 
 const nowIso = () => new Date().toISOString();
@@ -261,7 +298,8 @@ const runCodexExec = async (
   userText: string,
   workspace: string,
   project: string,
-  thread: string
+  thread: string,
+  selectedModel?: string
 ): Promise<{ reply: string; status: string }> => {
   const prompt = buildRelayPrompt(userText, workspace);
   const codexArgs = [
@@ -273,6 +311,9 @@ const runCodexExec = async (
     "-C",
     workspace,
   ];
+  if (selectedModel) {
+    codexArgs.push("-m", selectedModel);
+  }
 
   return new Promise((resolvePromise) => {
     const command = isWindows && existsSync(codexPs1Path) ? "powershell.exe" : "codex";
@@ -294,6 +335,8 @@ const runCodexExec = async (
     let finalReply = "";
     let done = false;
     let lastProgressAt = Date.now();
+    let lastGitSummarySent = "";
+    let gitScanInFlight = false;
 
     const thinkingTimer = setInterval(() => {
       const now = Date.now();
@@ -303,10 +346,27 @@ const runCodexExec = async (
       }
     }, 2000);
 
+    const filesTimer = setInterval(() => {
+      if (gitScanInFlight) return;
+      gitScanInFlight = true;
+      void (async () => {
+        try {
+          const summary = await getGitStatusSummary(workspace);
+          if (summary && summary !== lastGitSummarySent) {
+            lastGitSummarySent = summary;
+            await pushMessage(project, thread, "system", `Fichiers modifies en cours:\n${summary}`);
+          }
+        } finally {
+          gitScanInFlight = false;
+        }
+      })();
+    }, 4000);
+
     const finalize = (reply: string, status: string) => {
       if (done) return;
       done = true;
       clearInterval(thinkingTimer);
+      clearInterval(filesTimer);
       resolvePromise({ reply, status });
     };
 
@@ -363,12 +423,13 @@ const processUserMessage = async (message: PullMessage) => {
   markMessageSeen(message.id);
 
   const workspace = resolveWorkspace(message.project_key);
+  const selectedModel = resolveModel(message.project_key);
   if (!existsSync(workspace)) {
     await pushMessage(
       message.project_key,
       message.thread_id,
       "system",
-      `Workspace introuvable pour ${message.project_key}: ${workspace}`
+      `Workspace introuvable: ${workspace}`
     );
     return;
   }
@@ -377,14 +438,15 @@ const processUserMessage = async (message: PullMessage) => {
     message.project_key,
     message.thread_id,
     "system",
-    `Reflexion en cours...\nProjet: ${message.project_key}\nThread: ${message.thread_id}\nWorkspace: ${workspace}`
+    "Reflexion en cours..."
   );
 
   const result = await runCodexExec(
     userText,
     workspace,
     message.project_key,
-    message.thread_id
+    message.thread_id,
+    selectedModel
   );
 
   if (result.status !== "ok") {

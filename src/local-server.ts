@@ -35,6 +35,7 @@ type BindingRecord = {
 type ChatContextRecord = {
   active_project_key?: string;
   active_thread_id?: string;
+  active_model?: string;
   updated_at: string;
 };
 
@@ -71,6 +72,7 @@ type LocalStore = {
   settings: {
     owner_chat_id?: number;
     last_update_id?: number;
+    default_model?: string;
     updated_at?: string;
   };
   projects: Record<string, ProjectRecord>;
@@ -126,8 +128,8 @@ const saveStore = () => {
 
 const formatBridgeMessage = (
   role: string | undefined,
-  projectKey: string,
-  threadId: string,
+  _projectKey: string,
+  _threadId: string,
   text: string
 ): string => {
   const prefix =
@@ -138,7 +140,7 @@ const formatBridgeMessage = (
       : role === "system"
       ? "Systeme"
       : "Assistant";
-  return `[${projectKey}/${threadId}] ${prefix}\n${text}`;
+  return `${prefix}\n${text}`;
 };
 
 const bindingDocId = (projectKey: string, chatId: number) => `${projectKey}_${chatId}`;
@@ -225,6 +227,9 @@ const helpText =
   "/bind <project_key> -> lier ce chat au projet\n" +
   "/use <project_key> -> definir le projet actif\n" +
   "/thread <thread_id> -> definir le thread actif\n" +
+  "/project -> afficher projet/thread/modele actifs\n" +
+  "/model <nom_modele> -> definir le modele Codex\n" +
+  "/model -> afficher le modele actif\n" +
   "Puis envoie ton message normal.";
 
 const pushInboxMessage = async (message: TelegramMessage) => {
@@ -266,7 +271,7 @@ const pushInboxMessage = async (message: TelegramMessage) => {
   saveStore();
 
   if (config.autoAck) {
-    const ackText = `Message recu et transmis.\nProjet: ${activeProject}\nThread: ${threadId}`;
+    const ackText = "Message recu et transmis.";
     const ackResult = await sendTelegramMessage(chatId, ackText);
     if (ackResult.error) {
       console.error(`[auto-ack] ${ackResult.error}`);
@@ -307,8 +312,8 @@ const handleTelegramCommand = async (message: TelegramMessage): Promise<boolean>
       await sendTelegramMessage(chatId, "Usage: /bind <project_key>");
       return true;
     }
-    const normalized = bindProjectToChat(projectKey, chatId, true, true);
-    await sendTelegramMessage(chatId, `Connecte\nProjet: ${normalized}\nThread: default`);
+    bindProjectToChat(projectKey, chatId, true, true);
+    await sendTelegramMessage(chatId, "Connecte");
     return true;
   }
 
@@ -328,10 +333,11 @@ const handleTelegramCommand = async (message: TelegramMessage): Promise<boolean>
     store.chatContexts[String(chatId)] = {
       active_project_key: normalized,
       active_thread_id: existingContext?.active_thread_id || "default",
+      active_model: existingContext?.active_model || store.settings.default_model,
       updated_at: nowIso(),
     };
     saveStore();
-    await sendTelegramMessage(chatId, `Projet actif: ${normalized}`);
+    await sendTelegramMessage(chatId, "Projet actif mis a jour.");
     return true;
   }
 
@@ -341,10 +347,45 @@ const handleTelegramCommand = async (message: TelegramMessage): Promise<boolean>
     store.chatContexts[String(chatId)] = {
       active_project_key: existingContext?.active_project_key,
       active_thread_id: threadId,
+      active_model: existingContext?.active_model || store.settings.default_model,
       updated_at: nowIso(),
     };
     saveStore();
-    await sendTelegramMessage(chatId, `Thread actif: ${threadId}`);
+    await sendTelegramMessage(chatId, "Thread actif mis a jour.");
+    return true;
+  }
+
+  if (cmd === "/project" || cmd === "/status") {
+    const context = store.chatContexts[String(chatId)];
+    const project = context?.active_project_key || "non defini";
+    const thread = context?.active_thread_id || "default";
+    const model = context?.active_model || store.settings.default_model || "modele par defaut";
+    await sendTelegramMessage(chatId, `Projet: ${project}\nThread: ${thread}\nModele: ${model}`);
+    return true;
+  }
+
+  if (cmd === "/model") {
+    const requestedModel = (args[0] || "").trim();
+    if (!requestedModel) {
+      const currentModel =
+        store.chatContexts[String(chatId)]?.active_model ||
+        store.settings.default_model ||
+        "modele par defaut";
+      await sendTelegramMessage(chatId, `Modele actif: ${currentModel}`);
+      return true;
+    }
+
+    const existingContext = store.chatContexts[String(chatId)];
+    store.chatContexts[String(chatId)] = {
+      active_project_key: existingContext?.active_project_key,
+      active_thread_id: existingContext?.active_thread_id || "default",
+      active_model: requestedModel,
+      updated_at: nowIso(),
+    };
+    store.settings.default_model = requestedModel;
+    store.settings.updated_at = nowIso();
+    saveStore();
+    await sendTelegramMessage(chatId, `Modele mis a jour: ${requestedModel}`);
     return true;
   }
 
@@ -428,7 +469,7 @@ app.post("/projects/bind", requireHubToken, async (req: Request, res: Response) 
       body.enabled ?? true,
       body.primary ?? true
     );
-    await sendTelegramMessage(chatId, `Connecte\nProjet: ${projectKey}\nThread: default`);
+    await sendTelegramMessage(chatId, "Connecte");
     return res.json({ ok: true, project_key: projectKey, chat_id: chatId });
   } catch (error) {
     return res.status(500).json({

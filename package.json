@@ -14,7 +14,9 @@
     "set-webhook": "tsx src/set-webhook.ts",
     "send:connected": "tsx src/send-connected.ts",
     "bridge": "tsx src/bridge-client.ts",
-    "relay:codex": "tsx src/codex-telegram-relay.ts"
+    "relay:codex": "tsx src/codex-telegram-relay.ts",
+    "stack:start": "powershell -ExecutionPolicy Bypass -File scripts/start-local-stack.ps1",
+    "stack:stop": "powershell -ExecutionPolicy Bypass -File scripts/stop-local-stack.ps1"
   },
   "dependencies": {
     "express": "^4.21.2"
