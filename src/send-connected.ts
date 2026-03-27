@@ -1,5 +1,7 @@
 import { config, telegramApiBase } from "./config.js";
 import { sendTelegramMessage } from "./telegram.js";
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 type TelegramUpdate = {
   update_id?: number;
@@ -16,12 +18,35 @@ type TelegramApiResult<T> = {
   description?: string;
 };
 
+type LocalStore = {
+  settings?: {
+    owner_chat_id?: number;
+  };
+};
+
+const getLocalOwnerChatId = (): number | null => {
+  const path = resolve(process.env.HUB_LOCAL_STORE_PATH || ".data/telegram-hub-store.json");
+  try {
+    const content = readFileSync(path, "utf8");
+    const parsed = JSON.parse(content) as LocalStore;
+    const chatId = Number(parsed.settings?.owner_chat_id);
+    return Number.isFinite(chatId) ? chatId : null;
+  } catch {
+    return null;
+  }
+};
+
 const resolveChatId = async (): Promise<number> => {
   if (config.ownerChatId) {
     const numeric = Number(config.ownerChatId);
     if (Number.isFinite(numeric)) {
       return numeric;
     }
+  }
+
+  const localOwner = getLocalOwnerChatId();
+  if (localOwner != null) {
+    return localOwner;
   }
 
   const response = await fetch(`${telegramApiBase}/getUpdates`, {
