@@ -266,10 +266,27 @@ const pushInboxMessage = async (message: TelegramMessage) => {
   saveStore();
 
   if (config.autoAck) {
-    await sendTelegramMessage(
-      chatId,
-      `Message recu et transmis.\nProjet: ${activeProject}\nThread: ${threadId}`
-    );
+    const ackText = `Message recu et transmis.\nProjet: ${activeProject}\nThread: ${threadId}`;
+    const ackResult = await sendTelegramMessage(chatId, ackText);
+    if (ackResult.error) {
+      console.error(`[auto-ack] ${ackResult.error}`);
+    } else {
+      const outboxId = `${activeProject}_${threadId}_${ackResult.messageId || Date.now()}`;
+      store.outbox[outboxId] = {
+        id: outboxId,
+        project_key: activeProject,
+        thread_id: threadId,
+        role: "system",
+        text: ackText,
+        source: "bridge",
+        status: "sent",
+        chat_id: chatId,
+        telegram_message_id: ackResult.messageId,
+        created_at: nowIso(),
+        sent_at: nowIso(),
+      };
+      saveStore();
+    }
   }
 };
 

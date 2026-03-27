@@ -1,50 +1,51 @@
-# Check-list d'exploitation
+# Runbook Local (sans Firebase)
 
-## 1) Securite avant mise en ligne
+## 1) Variables minimales
 
-1. Regenerer le token bot via BotFather (l'ancien token expose ne doit plus etre utilise).
-2. Creer des secrets runtime:
-   - `TELEGRAM_BOT_TOKEN`
-   - `HUB_API_TOKEN`
-   - `TELEGRAM_WEBHOOK_SECRET`
-3. (Optionnel) Fixer `TELEGRAM_OWNER_CHAT_ID` pour verrouiller ton chat prive.
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_WEBHOOK_SECRET` (valeur libre en local)
+- `HUB_API_TOKEN`
+- `PORT` (optionnel, defaut `8080`)
+- `TELEGRAM_AUTO_ACK=true` (recommande)
 
-## 2) Deploy hub (projet Firebase/Cloud Run dedie)
+## 2) Demarrage local
 
-1. Construire et deployer l'image:
-   - `docker build -t gcr.io/<PROJECT_ID>/telegram-hub:latest .`
-   - `docker push gcr.io/<PROJECT_ID>/telegram-hub:latest`
-2. Deploy Cloud Run:
-   - `gcloud run deploy telegram-hub --image gcr.io/<PROJECT_ID>/telegram-hub:latest --region <REGION> --allow-unauthenticated`
-3. Definir les variables et secrets d'environnement du service.
+```bash
+npm install
+npm run dev
+```
 
-## 3) Configurer le webhook Telegram
+Le service tourne en local avec un store JSON:
 
-1. Exporter `HUB_PUBLIC_URL`.
-2. Lancer `npm run set-webhook`.
-3. Verifier que Telegram pointe vers:
-   - `https://<HUB_PUBLIC_URL>/telegram/webhook/<TELEGRAM_WEBHOOK_SECRET>`
+- `.data/telegram-hub-store.json`
 
-## 4) Activer Pilotage ED
+## 3) Activation projet
 
-1. Dans Pilotage ED:
-   - `TELEGRAM_BRIDGE_ENABLED=true`
-   - `TELEGRAM_HUB_URL=https://<HUB_PUBLIC_URL>`
-   - `TELEGRAM_PROJECT_KEY=pilotage-ed`
-   - `TELEGRAM_HUB_API_TOKEN=<same HUB_API_TOKEN>`
-2. Binder le projet:
-   - Telegram: `/bind pilotage-ed`
-   - ou CLI: `npm run telegram:bridge -- bind pilotage-ed`
-3. Verifier reception du message `Connecte`.
+Sur Telegram:
 
-## 5) Tests de flux
+1. envoyer `/bind pilotage-ed`
+2. envoyer un message normal
 
-1. Telegram -> Hub -> Pull:
-   - envoyer un message Telegram
-   - appeler `/bridge/pull` et verifier le message
-2. Push -> Telegram:
-   - appeler `/bridge/push` avec `project_key=pilotage-ed`
-   - verifier reception sur Telegram
-3. Isolation multi-projets:
-   - binder un second `project_key`
-   - verifier qu'un `pull` sur `pilotage-ed` ne remonte pas les messages de l'autre projet.
+Le bot doit repondre automatiquement:
+
+- `Message recu et transmis...`
+
+## 4) Verification bridge
+
+Recuperer les messages Telegram:
+
+```bash
+npm run bridge -- pull pilotage-ed default
+```
+
+Envoyer une reponse vers Telegram:
+
+```bash
+npm run bridge -- push pilotage-ed default assistant "Reponse test"
+```
+
+Surveillance continue:
+
+```bash
+npm run bridge -- watch pilotage-ed default
+```

@@ -51,8 +51,8 @@ export type InboxRecord = {
   status: "pending" | "consumed";
   chat_id: number;
   telegram_message_id: number;
-  created_at: FirebaseFirestore.FieldValue;
-  consumed_at?: FirebaseFirestore.FieldValue;
+  created_at: string;
+  consumed_at?: string;
 };
 
 export type OutboxRecord = {
@@ -64,7 +64,7 @@ export type OutboxRecord = {
   status: "sent" | "failed";
   chat_id: number;
   telegram_message_id?: number;
-  created_at: FirebaseFirestore.FieldValue;
-  sent_at?: FirebaseFirestore.FieldValue;
+  created_at: string;
+  sent_at?: string;
   error?: string;
 };

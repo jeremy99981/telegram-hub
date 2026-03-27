@@ -13,10 +13,7 @@ Service Telegram dedie pour relier plusieurs projets sans interference.
 ## Isolation
 
 - Namespace par `project_key`
-- `projects/{project_key}`
-- `bindings/{project_key_chatId}`
-- `inbox/{project_key_thread_messageId}`
-- `outbox/{project_key_thread_messageId}`
+- `projects`, `bindings`, `inbox`, `outbox` dans le store JSON local
 
 ## Variables d'environnement
 
@@ -25,7 +22,7 @@ Copier `.env.example` puis renseigner:
 - `TELEGRAM_BOT_TOKEN` (token regenere)
 - `TELEGRAM_WEBHOOK_SECRET`
 - `HUB_API_TOKEN` (token API interne bridge)
-- `HUB_PUBLIC_URL` (URL publique du service)
+- `HUB_PUBLIC_URL` (optionnel si webhook public)
 - `TELEGRAM_OWNER_CHAT_ID` (optionnel: verrouille un chat proprietaire)
 
 ## Commandes
@@ -41,7 +38,7 @@ npm run bridge -- pull pilotage-ed default
 
 ## Mode local (sans Firebase)
 
-Le mode `dev:local` demarre un hub autonome avec stockage JSON local:
+Le hub est desormais 100% local (aucune dependance Firebase):
 
 - fichier store par defaut: `.data/telegram-hub-store.json`
 - polling Telegram automatique via `getUpdates`
